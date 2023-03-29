@@ -1,6 +1,7 @@
 pub fn main() {
     join_test();
     multiple_join_test();
+    channel();
 }
 
 fn join_test() {
@@ -49,4 +50,39 @@ fn multiple_join_test() {
         }
         _ => println!("error occur!"),
     }
+}
+
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use std::{thread, time};
+fn channel() {
+    let (sender, receiver) = std::sync::mpsc::sync_channel(64);
+
+    let i_vec = (0..30).collect::<Vec<i32>>();
+    let handlers: Vec<_> = i_vec
+        .into_iter()
+        .map({
+            let ss = sender.clone();
+            move |i| {
+                std::thread::spawn({
+                    let s = ss.clone();
+                    move || {
+                        thread::sleep(time::Duration::from_millis(100));
+                        s.send(i)
+                    }
+                })
+            }
+        })
+        .collect();
+    handlers.into_iter().for_each(|h| {
+        h.join();
+    });
+    let mut result: Vec<i32> = Vec::new();
+    for _ in 0..30 {
+        match receiver.recv() {
+            Ok(i) => result.push(i),
+            Err(e) => println!("{:?}", e),
+        }
+    }
+    println!("result: {:?}", result);
 }
