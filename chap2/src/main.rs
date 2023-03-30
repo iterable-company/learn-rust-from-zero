@@ -52,8 +52,6 @@ fn multiple_join_test() {
     }
 }
 
-use rand::seq::SliceRandom;
-use rand::thread_rng;
 use std::{thread, time};
 fn channel() {
     let (sender, receiver) = std::sync::mpsc::sync_channel(64);
@@ -74,8 +72,9 @@ fn channel() {
             }
         })
         .collect();
-    handlers.into_iter().for_each(|h| {
-        h.join();
+    handlers.into_iter().for_each(|h| match h.join() {
+        Ok(_) => (),
+        Err(e) => println!("{:?}", e),
     });
     let mut result: Vec<i32> = Vec::new();
     for _ in 0..30 {
