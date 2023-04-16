@@ -1,7 +1,15 @@
+pub mod randomized_vec;
+pub mod xor64;
+
 pub fn main() {
     join_test();
     multiple_join_test();
-    channel();
+
+    channel_multiple_sender();
+    _channel_multiple_receiver();
+
+    sort_vec_single_thread();
+    sort_vec_multi_thread();
 }
 
 fn join_test() {
@@ -53,7 +61,9 @@ fn multiple_join_test() {
 }
 
 use std::{thread, time};
-fn channel() {
+
+use rand::thread_rng;
+fn channel_multiple_sender() {
     let (sender, receiver) = std::sync::mpsc::sync_channel(64);
 
     let i_vec = (0..30).collect::<Vec<i32>>();
@@ -84,4 +94,56 @@ fn channel() {
         }
     }
     println!("result: {:?}", result);
+}
+
+fn _channel_multiple_receiver() {
+    // https://doc.rust-lang.org/std/sync/mpsc/struct.Receiver.html
+    // The receiving half of Rust’s channel (or sync_channel) type. This half can only be owned by one thread.
+    // と書かれているようにReceiverは複数スレッドで共有できない
+    // Senderは、
+    // This half can only be owned by one thread, but it can be cloned to send to other threads.
+    // と書かれており、共有でできないがcloneができる
+}
+
+fn sort_vec_single_thread() {
+    let mut v1 = randomized_vec::randomized_vec(1234);
+    let mut v2 = randomized_vec::randomized_vec(6789);
+
+    let start = std::time::Instant::now();
+
+    v1.sort();
+    v2.sort();
+
+    let end = start.elapsed();
+    println!(
+        "single threaded: {}.{:03}sec",
+        end.as_secs(),
+        end.subsec_nanos()
+    );
+}
+
+fn sort_vec_multi_thread() {
+    let mut v1 = randomized_vec::randomized_vec(1234);
+    let mut v2 = randomized_vec::randomized_vec(6789);
+
+    let start = std::time::Instant::now();
+    let handler1 = thread::spawn(|| {
+        v1.sort();
+        v1
+    });
+    let handler2 = thread::spawn(|| {
+        v2.sort();
+        v2
+    });
+
+    match (handler1.join(), handler2.join()) {
+        (Ok(_), Ok(_)) => (),
+        _ => println!("error!: sthread 1 or 2 "),
+    };
+    let end = start.elapsed();
+    println!(
+        "multi threaded: {}.{:03}sec",
+        end.as_secs(),
+        end.subsec_nanos()
+    );
 }
