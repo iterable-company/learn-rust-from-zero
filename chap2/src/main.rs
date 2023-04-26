@@ -62,7 +62,6 @@ fn multiple_join_test() {
 
 use std::{thread, time};
 
-use rand::thread_rng;
 fn channel_multiple_sender() {
     let (sender, receiver) = std::sync::mpsc::sync_channel(64);
 
