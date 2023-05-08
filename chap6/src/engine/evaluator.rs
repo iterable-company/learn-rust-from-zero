@@ -38,7 +38,7 @@ fn eval_depth(
         match next {
             Instruction::Char(c) => {
                 if let Some(sp_c) = line.get(sp) {
-                    if c == sp_c {
+                    if c == sp_c || *c == '.' {
                         safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
                         safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
                     } else {
@@ -48,13 +48,17 @@ fn eval_depth(
                     return Ok(false);
                 }
             }
-            Instruction::Dot() => {
-                if let Some(_) = line.get(sp) {
-                    safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
-                    safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
-                } else {
+            Instruction::Caret => {
+                if sp != 0 {
                     return Ok(false);
                 }
+                safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
+            }
+            Instruction::Doller => {
+                if sp != line.len() {
+                    return Ok(false);
+                }
+                safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
             Instruction::Match => return Ok(true),
             Instruction::Jump(addr) => pc = *addr,
@@ -80,11 +84,10 @@ fn eval_width(inst: &[Instruction], line: &[char]) -> Result<bool, EvalError> {
         } else {
             return Err(EvalError::InvalidPC);
         };
-
         match next {
             Instruction::Char(c) => {
                 if let Some(sp_c) = line.get(sp) {
-                    if c == sp_c {
+                    if c == sp_c || *c == '.' {
                         safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
                         safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
                     } else {
@@ -102,9 +105,16 @@ fn eval_width(inst: &[Instruction], line: &[char]) -> Result<bool, EvalError> {
                     }
                 }
             }
-            Instruction::Dot() => {
+            Instruction::Caret => {
+                if sp != 0 {
+                    return Ok(false);
+                }
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
-                safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
+            }
+            Instruction::Doller => {
+                if sp != line.len() {
+                    return Ok(false);
+                }
             }
             Instruction::Match => {
                 return Ok(true);

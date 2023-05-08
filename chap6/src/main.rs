@@ -55,10 +55,17 @@ mod tests {
         assert!(do_matching("(ab|cd)+", "abcdcd", true).unwrap());
         assert!(do_matching("abc?", "ab", true).unwrap());
         assert!(do_matching("abc.e", "abcxe", true).unwrap());
+        assert!(do_matching("^abcd", "abcd", true).unwrap());
+        assert!(do_matching("abcd$", "abcd", true).unwrap());
 
         assert!(!do_matching("abc|def", "efa", true).unwrap());
         assert!(!do_matching("(ab|cd)+", "", true).unwrap());
         assert!(!do_matching("abc?", "acb", true).unwrap());
         assert!(!do_matching("abc.", "abc", true).unwrap());
+        assert!(!do_matching("^abcd", "babcd", true).unwrap());
+        assert!(!do_matching("abcd$", "abcda", true).unwrap());
+
+        assert!(do_matching("(abc)*", "aabcabc", true).unwrap());
+        // assert!(do_matching("abc", "aabc", true).unwrap());
     }
 }

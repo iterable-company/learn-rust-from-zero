@@ -47,7 +47,8 @@ impl Generator {
             AST::Star(e) => self.gen_star(e)?,
             AST::Question(e) => self.gen_question(e)?,
             AST::Seq(v) => self.gen_seq(v)?,
-            AST::Dot() => self.gen_dot()?,
+            AST::Caret => self.gen_caret()?,
+            AST::Doller => self.gen_doller()?,
         }
         Ok(())
     }
@@ -66,8 +67,15 @@ impl Generator {
         Ok(())
     }
 
-    fn gen_dot(&mut self) -> Result<(), CodeGenError> {
-        let inst = Instruction::Dot();
+    fn gen_caret(&mut self) -> Result<(), CodeGenError> {
+        let inst = Instruction::Caret;
+        self.insts.push(inst);
+        self.inc_pc()?;
+        Ok(())
+    }
+
+    fn gen_doller(&mut self) -> Result<(), CodeGenError> {
+        let inst = Instruction::Doller;
         self.insts.push(inst);
         self.inc_pc()?;
         Ok(())

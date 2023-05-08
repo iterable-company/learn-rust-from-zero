@@ -10,7 +10,8 @@ pub enum AST {
     Plus(Box<AST>),
     Star(Box<AST>),
     Question(Box<AST>),
-    Dot(),
+    Caret,
+    Doller,
     Or(Box<AST>, Box<AST>),
     Seq(Vec<AST>),
 }
@@ -50,7 +51,7 @@ impl Error for ParseError {}
 
 fn parse_escape(pos: usize, c: char) -> Result<AST, ParseError> {
     match c {
-        '\\' | '(' | ')' | '|' | '+' | '*' | '?' | '.' => Ok(AST::Char(c)),
+        '\\' | '(' | ')' | '|' | '+' | '*' | '?' | '.' | '^' | '$' => Ok(AST::Char(c)),
         _ => {
             let err = ParseError::InvalidEscape(pos, c);
             Err(err)
@@ -109,10 +110,11 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
     for (i, c) in expr.chars().enumerate() {
         match &state {
             ParseState::Char => match c {
+                '^' => seq.push(AST::Caret),
+                '$' => seq.push(AST::Doller),
                 '+' => parse_plus_star_question(&mut seq, PSQ::Plus, i)?,
                 '*' => parse_plus_star_question(&mut seq, PSQ::Star, i)?,
                 '?' => parse_plus_star_question(&mut seq, PSQ::Question, i)?,
-                '.' => seq.push(AST::Dot()),
                 '(' => {
                     let prev = take(&mut seq);
                     let prev_or = take(&mut seq_or);
