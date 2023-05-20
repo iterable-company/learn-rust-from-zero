@@ -25,9 +25,11 @@ impl Error for EvalError {}
 fn eval_depth(
     inst: &[Instruction],
     line: &[char],
+    index: usize,
     mut pc: usize,
     mut sp: usize,
 ) -> Result<bool, EvalError> {
+    let original_sp = sp;
     loop {
         let next = if let Some(i) = inst.get(pc) {
             i
@@ -49,13 +51,13 @@ fn eval_depth(
                 }
             }
             Instruction::Caret => {
-                if sp != 0 {
+                if sp != 0 || index != 0 {
                     return Ok(false);
                 }
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
             Instruction::Doller => {
-                if sp != line.len() {
+                if sp + original_sp != line.len() {
                     return Ok(false);
                 }
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
@@ -63,7 +65,9 @@ fn eval_depth(
             Instruction::Match => return Ok(true),
             Instruction::Jump(addr) => pc = *addr,
             Instruction::Split(addr1, addr2) => {
-                if eval_depth(inst, line, *addr1, sp)? || eval_depth(inst, line, *addr2, sp)? {
+                if eval_depth(inst, line, index, *addr1, sp)?
+                    || eval_depth(inst, line, index, *addr2, sp)?
+                {
                     return Ok(true);
                 } else {
                     return Ok(false);
@@ -150,9 +154,14 @@ fn pop_ctx(
     }
 }
 
-pub fn eval(inst: &[Instruction], line: &[char], is_depth: bool) -> Result<bool, EvalError> {
+pub fn eval(
+    inst: &[Instruction],
+    line: &[char],
+    index: usize,
+    is_depth: bool,
+) -> Result<bool, EvalError> {
     if is_depth {
-        eval_depth(inst, line, 0, 0)
+        eval_depth(inst, line, index, 0, 0)
     } else {
         eval_width(inst, line)
     }

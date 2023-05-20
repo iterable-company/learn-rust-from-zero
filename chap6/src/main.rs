@@ -28,44 +28,51 @@ fn match_file(expr: &str, file: &str) -> Result<(), DynError> {
 
     for line in reader.lines() {
         let line = line?;
-        for (i, _) in line.char_indices() {
-            if engine::do_matching(expr, &line[i..], true)? {
-                println!("{line}");
-                break;
-            }
-        }
+        exec(expr, &line, true)?;
     }
 
     Ok(())
 }
 
+fn exec(expr: &str, line: &str, is_depth: bool) -> Result<bool, DynError> {
+    for (i, _) in line.char_indices() {
+        if engine::do_matching(expr, &line[i..], i, is_depth)? {
+            println!("line: {line}, &line[i..]: {:?}, i: {}", &line[i..], i);
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::engine::do_matching;
+    use crate::exec;
 
     #[test]
     fn test_do_matching() {
-        assert!(do_matching("+b", "bbb", true).is_err());
-        assert!(do_matching("*b", "bbb", true).is_err());
-        assert!(do_matching("|b", "bbb", true).is_err());
-        assert!(do_matching("?b", "bbb", true).is_err());
+        assert!(exec("+b", "bbb", true).is_err());
+        assert!(exec("*b", "bbb", true).is_err());
+        assert!(exec("|b", "bbb", true).is_err());
+        assert!(exec("?b", "bbb", true).is_err());
 
-        assert!(do_matching("abc|def", "def", true).unwrap());
-        assert!(do_matching("(abc)*", "abcabc", true).unwrap());
-        assert!(do_matching("(ab|cd)+", "abcdcd", true).unwrap());
-        assert!(do_matching("abc?", "ab", true).unwrap());
-        assert!(do_matching("abc.e", "abcxe", true).unwrap());
-        assert!(do_matching("^abcd", "abcd", true).unwrap());
-        assert!(do_matching("abcd$", "abcd", true).unwrap());
+        assert!(exec("abc|def", "def", true).unwrap());
+        assert!(exec("(abc)*", "abcabc", true).unwrap());
+        assert!(exec("(ab|cd)+", "abcdcd", true).unwrap());
+        assert!(exec("abc?", "ab", true).unwrap());
+        assert!(exec("abc.e", "abcxe", true).unwrap());
+        assert!(exec("^abcd", "abcde", true).unwrap());
+        assert!(exec("abcd$", "eabcd", true).unwrap());
+        assert!(!exec("ab(cd|ef)$", "xyzabef", true).unwrap());
 
-        assert!(!do_matching("abc|def", "efa", true).unwrap());
-        assert!(!do_matching("(ab|cd)+", "", true).unwrap());
-        assert!(!do_matching("abc?", "acb", true).unwrap());
-        assert!(!do_matching("abc.", "abc", true).unwrap());
-        assert!(!do_matching("^abcd", "babcd", true).unwrap());
-        assert!(!do_matching("abcd$", "abcda", true).unwrap());
+        assert!(!exec("abc|def", "efa", true).unwrap());
+        assert!(!exec("(ab|cd)+", "", true).unwrap());
+        assert!(!exec("abc?", "acb", true).unwrap());
+        assert!(!exec("abc.", "aabc", true).unwrap());
+        assert!(!exec("^abcd", "babcd", true).unwrap());
+        assert!(!exec("abcd$", "abcda", true).unwrap());
+        assert!(!exec("ab(c|d)$", "abcd", true).unwrap());
 
-        assert!(do_matching("(abc)*", "aabcabc", true).unwrap());
-        // assert!(do_matching("abc", "aabc", true).unwrap());
+        assert!(exec("(abc)*", "aabcabc", true).unwrap());
+        assert!(exec("abc", "aabc", true).unwrap());
     }
 }
