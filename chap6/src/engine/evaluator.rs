@@ -78,7 +78,7 @@ fn eval_depth(
                     "inside doller:: sp: {}, original_sp: {}, line: {:?}",
                     sp, original_sp, line
                 );
-                if (sp + original_sp != line.len() + index - 1) || sp < line.len() {
+                if sp != line.len() {
                     return Ok(false);
                 }
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
