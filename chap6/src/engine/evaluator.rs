@@ -29,7 +29,6 @@ fn eval_depth(
     mut pc: usize,
     mut sp: usize,
 ) -> Result<bool, EvalError> {
-    let original_sp = sp;
     println!(
         "eval_depth:: inst: {:?}, line: {:?}, index: {}, pc: {}, sp: {}",
         inst, line, index, pc, sp
@@ -67,6 +66,18 @@ fn eval_depth(
                     return Ok(false);
                 }
             }
+            Instruction::NotNumber => {
+                if let Some(sp_c) = line.get(sp) {
+                    if !"0123456789".chars().collect::<Vec<_>>().contains(sp_c) {
+                        safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
+                        safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
+                    } else {
+                        return Ok(false);
+                    }
+                } else {
+                    return Ok(false);
+                }
+            }
             Instruction::Caret => {
                 if sp != 0 || index != 0 {
                     return Ok(false);
@@ -74,10 +85,6 @@ fn eval_depth(
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
             Instruction::Doller => {
-                println!(
-                    "inside doller:: sp: {}, original_sp: {}, line: {:?}",
-                    sp, original_sp, line
-                );
                 if sp != line.len() {
                     return Ok(false);
                 }
@@ -131,6 +138,9 @@ fn eval_width(inst: &[Instruction], line: &[char]) -> Result<bool, EvalError> {
                 }
             }
             Instruction::AnyNumber => {
+                todo!()
+            }
+            Instruction::NotNumber => {
                 todo!()
             }
             Instruction::Caret => {

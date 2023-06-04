@@ -50,6 +50,7 @@ impl Generator {
             AST::Caret => self.gen_caret()?,
             AST::Doller => self.gen_doller()?,
             AST::AnyNumber => self.get_number()?,
+            AST::NotNumber => self.get_not_number()?,
         }
         Ok(())
     }
@@ -63,6 +64,13 @@ impl Generator {
 
     fn get_number(&mut self) -> Result<(), CodeGenError> {
         let inst = Instruction::AnyNumber;
+        self.insts.push(inst);
+        self.inc_pc()?;
+        Ok(())
+    }
+
+    fn get_not_number(&mut self) -> Result<(), CodeGenError> {
+        let inst = Instruction::NotNumber;
         self.insts.push(inst);
         self.inc_pc()?;
         Ok(())

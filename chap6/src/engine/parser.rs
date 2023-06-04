@@ -15,6 +15,7 @@ pub enum AST {
     Or(Box<AST>, Box<AST>),
     Seq(Vec<AST>),
     AnyNumber,
+    NotNumber,
 }
 
 #[derive(Debug)]
@@ -54,6 +55,7 @@ fn parse_escape(pos: usize, c: char) -> Result<AST, ParseError> {
     match c {
         '\\' | '(' | ')' | '|' | '+' | '*' | '?' | '.' | '^' | '$' => Ok(AST::Char(c)),
         'd' => Ok(AST::AnyNumber),
+        'D' => Ok(AST::NotNumber),
         _ => {
             let err = ParseError::InvalidEscape(pos, c);
             Err(err)
