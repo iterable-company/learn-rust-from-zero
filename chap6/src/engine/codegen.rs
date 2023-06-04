@@ -49,6 +49,7 @@ impl Generator {
             AST::Seq(v) => self.gen_seq(v)?,
             AST::Caret => self.gen_caret()?,
             AST::Doller => self.gen_doller()?,
+            AST::AnyNumber => self.get_number()?,
         }
         Ok(())
     }
@@ -57,6 +58,13 @@ impl Generator {
         for e in exprs {
             self.gen_expr(e)?;
         }
+        Ok(())
+    }
+
+    fn get_number(&mut self) -> Result<(), CodeGenError> {
+        let inst = Instruction::AnyNumber;
+        self.insts.push(inst);
+        self.inc_pc()?;
         Ok(())
     }
 

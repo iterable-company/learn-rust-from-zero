@@ -30,17 +30,34 @@ fn eval_depth(
     mut sp: usize,
 ) -> Result<bool, EvalError> {
     let original_sp = sp;
+    println!(
+        "eval_depth:: inst: {:?}, line: {:?}, index: {}, pc: {}, sp: {}",
+        inst, line, index, pc, sp
+    );
     loop {
         let next = if let Some(i) = inst.get(pc) {
             i
         } else {
             return Err(EvalError::InvalidPC);
         };
+        println!("next: {:?}, pc: {}, sp: {}", next, pc, sp);
 
         match next {
             Instruction::Char(c) => {
                 if let Some(sp_c) = line.get(sp) {
                     if c == sp_c || *c == '.' {
+                        safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
+                        safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
+                    } else {
+                        return Ok(false);
+                    }
+                } else {
+                    return Ok(false);
+                }
+            }
+            Instruction::AnyNumber => {
+                if let Some(sp_c) = line.get(sp) {
+                    if "0123456789".chars().collect::<Vec<_>>().contains(sp_c) {
                         safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
                         safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
                     } else {
@@ -57,7 +74,11 @@ fn eval_depth(
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
             Instruction::Doller => {
-                if sp + original_sp != line.len() {
+                println!(
+                    "inside doller:: sp: {}, original_sp: {}, line: {:?}",
+                    sp, original_sp, line
+                );
+                if (sp + original_sp != line.len() + index - 1) || sp < line.len() {
                     return Ok(false);
                 }
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
@@ -108,6 +129,9 @@ fn eval_width(inst: &[Instruction], line: &[char]) -> Result<bool, EvalError> {
                         pop_ctx(&mut pc, &mut sp, &mut ctx)?;
                     }
                 }
+            }
+            Instruction::AnyNumber => {
+                todo!()
             }
             Instruction::Caret => {
                 if sp != 0 {
