@@ -193,7 +193,7 @@ mod tests {
     use super::{get_code, AST};
 
     #[test]
-    fn test_do_matching() {
+    fn test_star() {
         let instructions = get_code(&AST::Seq(vec![
             AST::Char('a'),
             AST::Star(Box::new(AST::Or(
@@ -203,6 +203,34 @@ mod tests {
             AST::Char('f'),
         ]))
         .unwrap(); //"a(bc|cd)*e"
+        println!("{:#?}", instructions);
+    }
+
+    #[test]
+    fn test_question() {
+        let instructions = get_code(&AST::Seq(vec![
+            AST::Char('a'),
+            AST::Question(Box::new(AST::Or(
+                Box::new(AST::Seq(vec![AST::Char('b'), AST::Char('c')])),
+                Box::new(AST::Seq(vec![AST::Char('d'), AST::Char('e')])),
+            ))),
+            AST::Char('f'),
+        ]))
+        .unwrap(); //"a(bc|cd)?e"
+        println!("{:#?}", instructions);
+    }
+
+    #[test]
+    fn test_plus() {
+        let instructions = get_code(&AST::Seq(vec![
+            AST::Char('a'),
+            AST::Plus(Box::new(AST::Or(
+                Box::new(AST::Seq(vec![AST::Char('b'), AST::Char('c')])),
+                Box::new(AST::Seq(vec![AST::Char('d'), AST::Char('e')])),
+            ))),
+            AST::Char('f'),
+        ]))
+        .unwrap(); //"a(bc|cd)+e"
         println!("{:#?}", instructions);
     }
 }
