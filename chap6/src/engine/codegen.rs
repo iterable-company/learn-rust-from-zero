@@ -171,3 +171,22 @@ pub fn get_code(ast: &AST) -> Result<Vec<Instruction>, CodeGenError> {
     generator.gen_code(ast)?;
     Ok(generator.insts)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{get_code, AST};
+
+    #[test]
+    fn test_do_matching() {
+        let instructions = get_code(&AST::Seq(vec![
+            AST::Char('a'),
+            AST::Star(Box::new(AST::Or(
+                Box::new(AST::Seq(vec![AST::Char('b'), AST::Char('c')])),
+                Box::new(AST::Seq(vec![AST::Char('d'), AST::Char('e')])),
+            ))),
+            AST::Char('f'),
+        ]))
+        .unwrap(); //"a(bc|cd)*e"
+        println!("{:#?}", instructions);
+    }
+}
