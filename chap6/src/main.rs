@@ -67,6 +67,7 @@ mod tests {
         assert!(exec("a\\d+b", "a012b", true).unwrap());
         assert!(exec("a\\D+b", "acdeb", true).unwrap());
         assert!(exec("ad{2}b", "addb", true).unwrap());
+        assert!(exec("ab(cd|ef){3}g", "abcdcdefg", true).unwrap());
 
         assert!(!exec("abc|def", "efa", true).unwrap());
         assert!(!exec("(ab|cd)+", "", true).unwrap());
