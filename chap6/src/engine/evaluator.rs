@@ -40,7 +40,10 @@ fn eval_depth(
         } else {
             return Err(EvalError::InvalidPC);
         };
-        println!("next: {:?}, pc: {}, sp: {}, register: {:?}", next, pc, sp, register);
+        println!(
+            "next: {:?}, pc: {}, sp: {}, register: {:?}",
+            next, pc, sp, register
+        );
 
         match next {
             Instruction::Char(c) => {
@@ -110,7 +113,7 @@ fn eval_depth(
             }
             Instruction::Descrement(idx) => {
                 if register[*idx] == 0 {
-                    return Ok(false)
+                    return Ok(false);
                 }
                 register[*idx] = register[*idx] - 1;
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
