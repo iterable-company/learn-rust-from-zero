@@ -14,6 +14,7 @@ pub enum AST {
     Doller,
     Or(Box<AST>, Box<AST>),
     Seq(Vec<AST>),
+    Counter(Box<AST>, usize),
     AnyNumber,
     NotNumber,
 }
@@ -22,6 +23,7 @@ pub enum AST {
 pub enum ParseError {
     InvalidEscape(usize, char),
     InvalidRightParen(usize),
+    InvalidBrace,
     NoPrev(usize),
     NoRightParen,
     Empty,
@@ -45,6 +47,9 @@ impl Display for ParseError {
             ParseError::Empty => {
                 write!(f, "ParseError: empty expression")
             }
+            ParseError::InvalidBrace => {
+                write!(f, "ParseError: invalid brace")
+            }
         }
     }
 }
@@ -67,6 +72,7 @@ enum PSQ {
     Plus,
     Star,
     Question,
+    Counter(usize),
 }
 
 fn parse_plus_star_question(
@@ -79,6 +85,7 @@ fn parse_plus_star_question(
             PSQ::Plus => AST::Plus(Box::new(prev)),
             PSQ::Star => AST::Star(Box::new(prev)),
             PSQ::Question => AST::Question(Box::new(prev)),
+            PSQ::Counter(count) => AST::Counter(Box::new(prev), count),
         };
         seq.push(ast);
         Ok(())
@@ -104,12 +111,14 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
     enum ParseState {
         Char,
         Escape,
+        Brace,
     }
 
     let mut seq = Vec::new();
     let mut seq_or = Vec::new();
     let mut stack = Vec::new();
     let mut state = ParseState::Char;
+    let mut counter = "".to_string();
 
     for (i, c) in expr.chars().enumerate() {
         match &state {
@@ -147,12 +156,27 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                     }
                 }
                 '\\' => state = ParseState::Escape,
+                '{' => state = ParseState::Brace,
                 _ => seq.push(AST::Char(c)),
             },
             ParseState::Escape => {
                 let ast = parse_escape(i, c)?;
                 seq.push(ast);
                 state = ParseState::Char;
+            }
+            ParseState::Brace => {
+                if let Some(_) = c.to_digit(10) {
+                    counter.push(c);
+                } else {
+                    if c != '}' {
+                        return Err(ParseError::InvalidBrace);
+                    } else {
+                        let count = counter.parse::<usize>().unwrap();
+                        parse_plus_star_question(&mut seq, PSQ::Counter(count), i)?;
+                        counter = "".to_string();
+                        state = ParseState::Char;
+                    }
+                }
             }
         }
     }

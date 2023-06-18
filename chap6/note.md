@@ -89,3 +89,10 @@ M+1
 
 ## *
 1         Jump(1)
+
+
+## 数量指定子
+Split(2, M)
+Decrement(idx)
+. e を評価
+Jump(1)

@@ -12,7 +12,8 @@ pub enum Instruction {
     Doller,
     Match,
     Jump(usize),
-    Split(usize, usize),
+    Split(usize, usize, i32, i32),
+    Descrement(usize),
     AnyNumber,
     NotNumber,
 }
@@ -25,7 +26,14 @@ impl Display for Instruction {
             Instruction::Doller => write!(f, "doller"),
             Instruction::Match => write!(f, "match"),
             Instruction::Jump(addr) => write!(f, "jump {:>04}", addr),
-            Instruction::Split(addr1, addr2) => write!(f, "split {:>04}, {:>04}", addr1, addr2),
+            Instruction::Split(addr1, addr2, count, is_register_idx_increment) => {
+                write!(
+                    f,
+                    "split {:>04}, {:>04}, {}, {}",
+                    addr1, addr2, count, is_register_idx_increment
+                )
+            }
+            Instruction::Descrement(idx) => write!(f, "decrement {}", idx),
             Instruction::AnyNumber => write!(f, "any number"),
             Instruction::NotNumber => write!(f, "not number"),
         }

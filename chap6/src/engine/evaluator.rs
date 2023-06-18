@@ -28,6 +28,7 @@ fn eval_depth(
     index: usize,
     mut pc: usize,
     mut sp: usize,
+    register: &mut Vec<i32>,
 ) -> Result<bool, EvalError> {
     println!(
         "eval_depth:: inst: {:?}, line: {:?}, index: {}, pc: {}, sp: {}",
@@ -39,7 +40,7 @@ fn eval_depth(
         } else {
             return Err(EvalError::InvalidPC);
         };
-        println!("next: {:?}, pc: {}, sp: {}", next, pc, sp);
+        println!("next: {:?}, pc: {}, sp: {}, register: {:?}", next, pc, sp, register);
 
         match next {
             Instruction::Char(c) => {
@@ -90,16 +91,26 @@ fn eval_depth(
                 }
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
-            Instruction::Match => return Ok(true),
+            Instruction::Match => return Ok(register.iter().all(|counter| *counter <= 0)),
             Instruction::Jump(addr) => pc = *addr,
-            Instruction::Split(addr1, addr2) => {
-                if eval_depth(inst, line, index, *addr1, sp)?
-                    || eval_depth(inst, line, index, *addr2, sp)?
+            Instruction::Split(addr1, addr2, count, register_idx) => {
+                if *register_idx >= 0 {
+                    if let Some(_) = register.get_mut(*register_idx as usize) {
+                    } else {
+                        register.push(*count);
+                    }
+                }
+                if eval_depth(inst, line, index, *addr1, sp, register)?
+                    || eval_depth(inst, line, index, *addr2, sp, register)?
                 {
                     return Ok(true);
                 } else {
                     return Ok(false);
                 }
+            }
+            Instruction::Descrement(idx) => {
+                register[*idx] = register[*idx] - 1;
+                safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
         }
     }
@@ -160,11 +171,12 @@ fn eval_width(inst: &[Instruction], line: &[char]) -> Result<bool, EvalError> {
             Instruction::Jump(addr) => {
                 pc = *addr;
             }
-            Instruction::Split(addr1, addr2) => {
+            Instruction::Split(addr1, addr2, _count, _is_register_idx_increment) => {
                 pc = *addr1;
                 ctx.push_back((*addr2, sp));
                 continue;
             }
+            Instruction::Descrement(_register_idx) => todo!(),
         }
 
         if !ctx.is_empty() {
@@ -195,7 +207,8 @@ pub fn eval(
     is_depth: bool,
 ) -> Result<bool, EvalError> {
     if is_depth {
-        eval_depth(inst, line, index, 0, 0)
+        let mut register = vec![];
+        eval_depth(inst, line, index, 0, 0, &mut register)
     } else {
         eval_width(inst, line)
     }
