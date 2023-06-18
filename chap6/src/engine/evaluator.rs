@@ -28,7 +28,7 @@ fn eval_depth(
     index: usize,
     mut pc: usize,
     mut sp: usize,
-    register: &mut Vec<i32>,
+    mut register: Vec<i32>,
 ) -> Result<bool, EvalError> {
     println!(
         "eval_depth:: inst: {:?}, line: {:?}, index: {}, pc: {}, sp: {}",
@@ -100,7 +100,7 @@ fn eval_depth(
                         register.push(*count);
                     }
                 }
-                if eval_depth(inst, line, index, *addr1, sp, register)?
+                if eval_depth(inst, line, index, *addr1, sp, register.clone())?
                     || eval_depth(inst, line, index, *addr2, sp, register)?
                 {
                     return Ok(true);
@@ -109,6 +109,9 @@ fn eval_depth(
                 }
             }
             Instruction::Descrement(idx) => {
+                if register[*idx] == 0 {
+                    return Ok(false)
+                }
                 register[*idx] = register[*idx] - 1;
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
@@ -207,8 +210,8 @@ pub fn eval(
     is_depth: bool,
 ) -> Result<bool, EvalError> {
     if is_depth {
-        let mut register = vec![];
-        eval_depth(inst, line, index, 0, 0, &mut register)
+        let register = vec![];
+        eval_depth(inst, line, index, 0, 0, register)
     } else {
         eval_width(inst, line)
     }
