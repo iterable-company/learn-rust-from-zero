@@ -14,7 +14,7 @@ pub enum AST {
     Doller,
     Or(Box<AST>, Box<AST>),
     Seq(Vec<AST>),
-    Counter(Box<AST>, usize),
+    Counter(Box<AST>, (usize, usize)),
     AnyNumber,
     NotNumber,
 }
@@ -72,7 +72,7 @@ enum PSQ {
     Plus,
     Star,
     Question,
-    Counter(usize),
+    Counter((usize, usize)),
 }
 
 fn parse_plus_star_question(
@@ -85,7 +85,9 @@ fn parse_plus_star_question(
             PSQ::Plus => AST::Plus(Box::new(prev)),
             PSQ::Star => AST::Star(Box::new(prev)),
             PSQ::Question => AST::Question(Box::new(prev)),
-            PSQ::Counter(count) => AST::Counter(Box::new(prev), count),
+            PSQ::Counter((lower_count, upper_count)) => {
+                AST::Counter(Box::new(prev), (lower_count, upper_count))
+            }
         };
         seq.push(ast);
         Ok(())
@@ -119,6 +121,8 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
     let mut stack = Vec::new();
     let mut state = ParseState::Char;
     let mut counter = "".to_string();
+    let mut counter_pair = (0, 0);
+    let mut expect_second_count = false;
 
     for (i, c) in expr.chars().enumerate() {
         match &state {
@@ -168,13 +172,25 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                 if let Some(_) = c.to_digit(10) {
                     counter.push(c);
                 } else {
-                    if c != '}' {
-                        return Err(ParseError::InvalidBrace);
-                    } else {
+                    if c == ' ' {
+                        // nop
+                    } else if c == ',' && !expect_second_count {
                         let count = counter.parse::<usize>().unwrap();
-                        parse_plus_star_question(&mut seq, PSQ::Counter(count), i)?;
+                        counter_pair.0 = count;
                         counter = "".to_string();
+                        expect_second_count = true;
+                    } else if c == '}' {
+                        let count = counter.parse::<usize>().unwrap();
+                        counter_pair.1 = count;
+                        if !expect_second_count {
+                            counter_pair.0 = count;
+                        }
+                        parse_plus_star_question(&mut seq, PSQ::Counter(counter_pair), i)?;
+                        counter = "".to_string();
+                        counter_pair = (0, 0);
                         state = ParseState::Char;
+                    } else {
+                        return Err(ParseError::InvalidBrace);
                     }
                 }
             }

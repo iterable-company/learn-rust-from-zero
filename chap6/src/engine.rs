@@ -12,7 +12,7 @@ pub enum Instruction {
     Doller,
     Match,
     Jump(usize),
-    Split(usize, usize, i32, i32),
+    Split(usize, usize, (i32, i32), i32),
     Descrement(usize),
     AnyNumber,
     NotNumber,
@@ -29,7 +29,7 @@ impl Display for Instruction {
             Instruction::Split(addr1, addr2, count, is_register_idx_increment) => {
                 write!(
                     f,
-                    "split {:>04}, {:>04}, {}, {}",
+                    "split {:>04}, {:>04}, {:?}, {}",
                     addr1, addr2, count, is_register_idx_increment
                 )
             }

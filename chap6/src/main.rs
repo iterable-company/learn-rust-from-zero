@@ -69,6 +69,8 @@ mod tests {
         assert!(exec("ad{2}b", "addb", true).unwrap());
         assert!(exec("ab(cd|ef){3}g", "abcdcdefg", true).unwrap());
         assert!(exec("ab(cd|ef){3}g{2}h", "abcdcdefggh", true).unwrap());
+        assert!(exec("abc{1,3}d", "abccd", true).unwrap());
+        assert!(exec("ab(cd|ef){1,3}g{2}h", "abcdefggh", true).unwrap());
 
         assert!(!exec("abc|def", "efa", true).unwrap());
         assert!(!exec("(ab|cd)+", "", true).unwrap());
@@ -81,6 +83,7 @@ mod tests {
         assert!(!exec("ad{3}f", "addf", true).unwrap());
         assert!(!exec("ad{3}f", "addddf", true).unwrap());
         assert!(!exec("ab(cd|ef){3}g{2}h", "abcdcdefgggh", true).unwrap());
+        assert!(!exec("ab(cd|ef){1,3}g{2}h", "abcdefcdefggh", true).unwrap());
 
         assert!(exec("(abc)*", "aabcabc", true).unwrap());
         assert!(exec("abc", "aabc", true).unwrap());

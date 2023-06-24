@@ -102,7 +102,7 @@ impl Generator {
     fn gen_or(&mut self, e1: &AST, e2: &AST, register_idx: &mut i32) -> Result<(), CodeGenError> {
         let split_addr = self.pc;
         self.inc_pc()?;
-        let split = Instruction::Split(self.pc, 0, -1, -1);
+        let split = Instruction::Split(self.pc, 0, (-1, -1), -1);
         self.insts.push(split);
 
         self.gen_expr(e1, register_idx)?;
@@ -111,7 +111,7 @@ impl Generator {
         self.insts.push(Instruction::Jump(0));
 
         self.inc_pc()?;
-        if let Some(Instruction::Split(_, l2, -1, -1)) = self.insts.get_mut(split_addr) {
+        if let Some(Instruction::Split(_, l2, (-1, -1), -1)) = self.insts.get_mut(split_addr) {
             *l2 = self.pc;
         } else {
             return Err(CodeGenError::FailOr);
@@ -132,14 +132,14 @@ impl Generator {
         // split L1, L2
         let split_addr = self.pc;
         self.inc_pc()?;
-        let split = Instruction::Split(self.pc, 0, -1, -1); // self.pcがL1。L2を仮に0と設定
+        let split = Instruction::Split(self.pc, 0, (-1, -1), -1); // self.pcがL1。L2を仮に0と設定
         self.insts.push(split);
 
         // L1: eのコード
         self.gen_expr(e, register_idx)?;
 
         // L2の値を設定
-        if let Some(Instruction::Split(_, l2, -1, -1)) = self.insts.get_mut(split_addr) {
+        if let Some(Instruction::Split(_, l2, (-1, -1), -1)) = self.insts.get_mut(split_addr) {
             *l2 = self.pc;
             Ok(())
         } else {
@@ -154,7 +154,7 @@ impl Generator {
 
         // split L1, L2
         self.inc_pc()?;
-        let split = Instruction::Split(l1, self.pc, -1, -1); // self.pcがL2
+        let split = Instruction::Split(l1, self.pc, (-1, -1), -1); // self.pcがL2
         self.insts.push(split);
 
         Ok(())
@@ -164,7 +164,7 @@ impl Generator {
         // L1: split L2, L3
         let l1 = self.pc;
         self.inc_pc()?;
-        let split = Instruction::Split(self.pc, 0, -1, -1); // self.pcがL2。L3を仮に0と設定
+        let split = Instruction::Split(self.pc, 0, (-1, -1), -1); // self.pcがL2。L3を仮に0と設定
         self.insts.push(split);
 
         // L2: eのコード
@@ -186,13 +186,13 @@ impl Generator {
     fn gen_counter(
         &mut self,
         e: &AST,
-        count: usize,
+        count: (usize, usize),
         register_idx: &mut i32,
     ) -> Result<(), CodeGenError> {
         // L1: split L2, L3
         let l1 = self.pc;
         self.inc_pc()?;
-        let split = Instruction::Split(self.pc, 0, count as i32, *register_idx); // self.pcがL2。L3を仮に0と設定
+        let split = Instruction::Split(self.pc, 0, (count.0 as i32, count.1 as i32), *register_idx); // self.pcがL2。L3を仮に0と設定
         self.insts.push(split);
         let decrement = Instruction::Descrement(*register_idx as usize);
         *register_idx += 1;
@@ -269,10 +269,10 @@ mod tests {
     }
 
     #[test]
-    fn test_counter() {
+    fn test_counter1() {
         let instructions = get_code(&AST::Seq(vec![
             AST::Char('a'),
-            AST::Counter(Box::new(AST::Char('d')), 3),
+            AST::Counter(Box::new(AST::Char('d')), (1, 3)),
             AST::Char('f'),
         ]))
         .unwrap(); //"ad{3}f"

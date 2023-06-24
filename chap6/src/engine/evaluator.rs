@@ -28,7 +28,7 @@ fn eval_depth(
     index: usize,
     mut pc: usize,
     mut sp: usize,
-    mut register: Vec<i32>,
+    mut register: Vec<(i32, i32)>,
 ) -> Result<bool, EvalError> {
     println!(
         "eval_depth:: inst: {:?}, line: {:?}, index: {}, pc: {}, sp: {}",
@@ -94,7 +94,11 @@ fn eval_depth(
                 }
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
-            Instruction::Match => return Ok(register.iter().all(|counter| *counter <= 0)),
+            Instruction::Match => {
+                return Ok(register
+                    .iter()
+                    .all(|counter| counter.0 <= 0 && counter.1 >= 0))
+            }
             Instruction::Jump(addr) => pc = *addr,
             Instruction::Split(addr1, addr2, count, register_idx) => {
                 if *register_idx >= 0 {
@@ -112,10 +116,11 @@ fn eval_depth(
                 }
             }
             Instruction::Descrement(idx) => {
-                if register[*idx] == 0 {
+                if register[*idx].1 == 0 {
                     return Ok(false);
                 }
-                register[*idx] = register[*idx] - 1;
+                register[*idx].0 = register[*idx].0 - 1;
+                register[*idx].1 = register[*idx].1 - 1;
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
         }
