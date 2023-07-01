@@ -114,6 +114,18 @@ fn fold_or(mut seq_or: Vec<AST>) -> Option<AST> {
     }
 }
 
+fn unmatch_charctors(seq_or: &mut Vec<AST>, seq: &Vec<AST>) -> Result<(), ParseError> {
+    let chars = seq
+        .iter()
+        .map(|ast| match ast {
+            AST::Char(c) => Ok(c.to_owned()),
+            _ => Err(ParseError::InvalidCaret),
+        })
+        .collect::<Result<Vec<char>, _>>()?;
+    seq_or.push(AST::UnmatchChars(chars));
+    Ok(())
+}
+
 pub fn parse(expr: &str) -> Result<AST, ParseError> {
     enum ParseState {
         Char,
@@ -159,14 +171,7 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                     if let Some((mut prev, prev_or)) = stack.pop() {
                         if !seq.is_empty() {
                             if expect_except_charactors {
-                                let chars = seq
-                                    .iter()
-                                    .map(|ast| match ast {
-                                        AST::Char(c) => Ok(c.to_owned()),
-                                        _ => Err(ParseError::InvalidCaret),
-                                    })
-                                    .collect::<Result<Vec<char>, _>>()?;
-                                seq_or.push(AST::UnmatchChars(chars));
+                                unmatch_charctors(&mut seq_or, &seq)?;
                                 expect_except_charactors = false;
                             } else {
                                 seq_or.push(AST::Seq(seq));
@@ -186,18 +191,11 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                     if seq.is_empty() {
                         return Err(ParseError::NoPrev(i));
                     } else {
-                        let prev = take(&mut seq);
                         if expect_except_charactors {
-                            let chars = seq
-                                .iter()
-                                .map(|ast| match ast {
-                                    AST::Char(c) => Ok(c.to_owned()),
-                                    _ => Err(ParseError::InvalidCaret),
-                                })
-                                .collect::<Result<Vec<char>, _>>()?;
-                            seq_or.push(AST::UnmatchChars(chars));
+                            unmatch_charctors(&mut seq_or, &seq)?;
                             expect_except_charactors = false;
                         } else {
+                            let prev = take(&mut seq);
                             seq_or.push(AST::Seq(prev));
                         }
                     }
