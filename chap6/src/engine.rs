@@ -12,7 +12,7 @@ pub enum Instruction {
     Doller,
     Match,
     Jump(usize),
-    Split(usize, usize, (i32, i32), i32),
+    Split(usize, usize, (i32, Option<i32>), i32),
     Descrement(usize),
     AnyNumber,
     NotNumber,

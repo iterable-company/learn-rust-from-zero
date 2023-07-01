@@ -50,6 +50,7 @@ mod tests {
 
     #[test]
     fn test_do_matching() {
+        //https://zenn.dev/catminusminus/articles/cfcc54a7ee9133 キャッシュ
         assert!(exec("+b", "bbb", true).is_err());
         assert!(exec("*b", "bbb", true).is_err());
         assert!(exec("|b", "bbb", true).is_err());
@@ -71,6 +72,8 @@ mod tests {
         assert!(exec("ab(cd|ef){3}g{2}h", "abcdcdefggh", true).unwrap());
         assert!(exec("abc{1,3}d", "abccd", true).unwrap());
         assert!(exec("ab(cd|ef){1,3}g{2}h", "abcdefggh", true).unwrap());
+        assert!(exec("ab(cd|ef){2,}g{2}h", "abcdefggh", true).unwrap());
+        assert!(exec("ab(cd|ef){2,}g{2}h", "abcdefefggh", true).unwrap());
 
         assert!(!exec("abc|def", "efa", true).unwrap());
         assert!(!exec("(ab|cd)+", "", true).unwrap());
@@ -84,6 +87,7 @@ mod tests {
         assert!(!exec("ad{3}f", "addddf", true).unwrap());
         assert!(!exec("ab(cd|ef){3}g{2}h", "abcdcdefgggh", true).unwrap());
         assert!(!exec("ab(cd|ef){1,3}g{2}h", "abcdefcdefggh", true).unwrap());
+        assert!(!exec("ab(cd|ef){4,}g{2}h", "abcdefcdggh", true).unwrap());
 
         assert!(exec("(abc)*", "aabcabc", true).unwrap());
         assert!(exec("abc", "aabc", true).unwrap());

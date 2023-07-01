@@ -14,7 +14,7 @@ pub enum AST {
     Doller,
     Or(Box<AST>, Box<AST>),
     Seq(Vec<AST>),
-    Counter(Box<AST>, (usize, usize)),
+    Counter(Box<AST>, (usize, Option<usize>)),
     AnyNumber,
     NotNumber,
 }
@@ -72,7 +72,7 @@ enum PSQ {
     Plus,
     Star,
     Question,
-    Counter((usize, usize)),
+    Counter((usize, Option<usize>)),
 }
 
 fn parse_plus_star_question(
@@ -121,7 +121,7 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
     let mut stack = Vec::new();
     let mut state = ParseState::Char;
     let mut counter = "".to_string();
-    let mut counter_pair = (0, 0);
+    let mut counter_pair = (0, None);
     let mut expect_second_count = false;
 
     for (i, c) in expr.chars().enumerate() {
@@ -180,14 +180,22 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                         counter = "".to_string();
                         expect_second_count = true;
                     } else if c == '}' {
-                        let count = counter.parse::<usize>().unwrap();
-                        counter_pair.1 = count;
+                        let counter_result = counter.parse::<usize>();
                         if !expect_second_count {
-                            counter_pair.0 = count;
+                            match counter_result {
+                                Ok(count) => counter_pair = (count, Some(count)),
+                                Err(_) => return Err(ParseError::InvalidBrace),
+                            }
+                        } else {
+                            match counter_result {
+                                Ok(c) => counter_pair.1 = Some(c),
+                                Err(_) => (),
+                            }
                         }
+
                         parse_plus_star_question(&mut seq, PSQ::Counter(counter_pair), i)?;
                         counter = "".to_string();
-                        counter_pair = (0, 0);
+                        counter_pair = (0, None);
                         state = ParseState::Char;
                     } else {
                         return Err(ParseError::InvalidBrace);
