@@ -43,6 +43,7 @@ impl Generator {
     fn gen_expr(&mut self, ast: &AST, register_idx: &mut i32) -> Result<(), CodeGenError> {
         match ast {
             AST::Char(c) => self.gen_char(*c)?,
+            AST::UnmatchChars(c) => self.gen_unmacth_chars(c.to_vec())?,
             AST::Or(e1, e2) => self.gen_or(e1, e2, register_idx)?,
             AST::Plus(e) => self.gen_plus(e, register_idx)?,
             AST::Star(e) => self.gen_star(e, register_idx)?,
@@ -80,6 +81,13 @@ impl Generator {
 
     fn gen_char(&mut self, c: char) -> Result<(), CodeGenError> {
         let inst = Instruction::Char(c);
+        self.insts.push(inst);
+        self.inc_pc()?;
+        Ok(())
+    }
+
+    fn gen_unmacth_chars(&mut self, c: Vec<char>) -> Result<(), CodeGenError> {
+        let inst = Instruction::UnmatchChars(c);
         self.insts.push(inst);
         self.inc_pc()?;
         Ok(())

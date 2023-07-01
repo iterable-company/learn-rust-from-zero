@@ -7,6 +7,7 @@ use std::{
 #[derive(Debug)]
 pub enum AST {
     Char(char),
+    UnmatchChars(Vec<char>),
     Plus(Box<AST>),
     Star(Box<AST>),
     Question(Box<AST>),
@@ -24,6 +25,7 @@ pub enum ParseError {
     InvalidEscape(usize, char),
     InvalidRightParen(usize),
     InvalidBrace,
+    InvalidCaret,
     NoPrev(usize),
     NoRightParen,
     Empty,
@@ -49,6 +51,9 @@ impl Display for ParseError {
             }
             ParseError::InvalidBrace => {
                 write!(f, "ParseError: invalid brace")
+            }
+            ParseError::InvalidCaret => {
+                write!(f, "ParseError: invalid caret")
             }
         }
     }
@@ -123,11 +128,23 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
     let mut counter = "".to_string();
     let mut counter_pair = (0, None);
     let mut expect_second_count = false;
+    let mut expect_grouping = false;
+    let mut expect_except_charactors = false;
 
     for (i, c) in expr.chars().enumerate() {
         match &state {
             ParseState::Char => match c {
-                '^' => seq.push(AST::Caret),
+                '^' => {
+                    if expect_grouping {
+                        if seq.len() == 0 {
+                            expect_except_charactors = true;
+                        } else {
+                            return Err(ParseError::InvalidCaret);
+                        }
+                    } else {
+                        seq.push(AST::Caret)
+                    }
+                }
                 '$' => seq.push(AST::Doller),
                 '+' => parse_plus_star_question(&mut seq, PSQ::Plus, i)?,
                 '*' => parse_plus_star_question(&mut seq, PSQ::Star, i)?,
@@ -135,18 +152,32 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                 '[' => {
                     let prev = take(&mut seq);
                     let prev_or = take(&mut seq_or);
+                    expect_grouping = true;
                     stack.push((prev, prev_or))
                 }
                 ']' => {
                     if let Some((mut prev, prev_or)) = stack.pop() {
                         if !seq.is_empty() {
-                            seq_or.push(AST::Seq(seq));
+                            if expect_except_charactors {
+                                let chars = seq
+                                    .iter()
+                                    .map(|ast| match ast {
+                                        AST::Char(c) => Ok(c.to_owned()),
+                                        _ => Err(ParseError::InvalidCaret),
+                                    })
+                                    .collect::<Result<Vec<char>, _>>()?;
+                                seq_or.push(AST::UnmatchChars(chars));
+                                expect_except_charactors = false;
+                            } else {
+                                seq_or.push(AST::Seq(seq));
+                            }
                         }
                         if let Some(ast) = fold_or(seq_or) {
                             prev.push(ast);
                         }
                         seq = prev;
                         seq_or = prev_or;
+                        expect_grouping = false;
                     } else {
                         return Err(ParseError::InvalidRightParen(i));
                     }
@@ -156,7 +187,19 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                         return Err(ParseError::NoPrev(i));
                     } else {
                         let prev = take(&mut seq);
-                        seq_or.push(AST::Seq(prev));
+                        if expect_except_charactors {
+                            let chars = seq
+                                .iter()
+                                .map(|ast| match ast {
+                                    AST::Char(c) => Ok(c.to_owned()),
+                                    _ => Err(ParseError::InvalidCaret),
+                                })
+                                .collect::<Result<Vec<char>, _>>()?;
+                            seq_or.push(AST::UnmatchChars(chars));
+                            expect_except_charactors = false;
+                        } else {
+                            seq_or.push(AST::Seq(prev));
+                        }
                     }
                 }
                 '\\' => state = ParseState::Escape,

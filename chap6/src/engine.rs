@@ -8,6 +8,7 @@ use std::fmt::{self, Display};
 #[derive(Debug)]
 pub enum Instruction {
     Char(char),
+    UnmatchChars(Vec<char>),
     Caret,
     Doller,
     Match,
@@ -22,6 +23,7 @@ impl Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Instruction::Char(c) => write!(f, "char {}", c),
+            Instruction::UnmatchChars(c) => write!(f, "unmatch char {:?}", c),
             Instruction::Caret => write!(f, "caret"),
             Instruction::Doller => write!(f, "doller"),
             Instruction::Match => write!(f, "match"),

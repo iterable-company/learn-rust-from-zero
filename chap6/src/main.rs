@@ -74,6 +74,8 @@ mod tests {
         assert!(exec("ab[cd|ef]{1,3}g{2}h", "abcdefggh", true).unwrap());
         assert!(exec("ab[cd|ef]{2,}g{2}h", "abcdefggh", true).unwrap());
         assert!(exec("ab[cd|ef]{2,}g{2}h", "abcdefefggh", true).unwrap());
+        assert!(exec("ab[^cd|ef]", "abg", true).unwrap());
+        assert!(exec("ab[^cd|ef]", "abef", true).unwrap());
 
         assert!(!exec("abc|def", "efa", true).unwrap());
         assert!(!exec("[ab|cd]+", "", true).unwrap());

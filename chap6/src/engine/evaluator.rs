@@ -58,6 +58,16 @@ fn eval_depth(
                     return Ok(false);
                 }
             }
+            Instruction::UnmatchChars(c) => {
+                if let Some(sp_c) = line.get(sp) {
+                    if !c.contains(sp_c) {
+                        safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
+                        safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
+                    } else {
+                        return Ok(false);
+                    }
+                }
+            }
             Instruction::AnyNumber => {
                 if let Some(sp_c) = line.get(sp) {
                     if "0123456789".chars().collect::<Vec<_>>().contains(sp_c) {
@@ -160,6 +170,9 @@ fn eval_width(inst: &[Instruction], line: &[char]) -> Result<bool, EvalError> {
                         pop_ctx(&mut pc, &mut sp, &mut ctx)?;
                     }
                 }
+            }
+            Instruction::UnmatchChars(_) => {
+                todo!()
             }
             Instruction::AnyNumber => {
                 todo!()
