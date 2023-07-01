@@ -1,7 +1,7 @@
 use super::Instruction;
 use crate::helper::safe_add;
 use std::{
-    collections::VecDeque,
+    collections::{HashSet, VecDeque},
     error::Error,
     fmt::{self, Display},
 };
@@ -29,6 +29,7 @@ fn eval_depth(
     mut pc: usize,
     mut sp: usize,
     mut register: Vec<(i32, Option<i32>)>,
+    cache: &mut HashSet<(usize, usize)>,
 ) -> Result<bool, EvalError> {
     println!(
         "eval_depth:: inst: {:?}, line: {:?}, index: {}, pc: {}, sp: {}",
@@ -109,7 +110,13 @@ fn eval_depth(
                     counter.0 <= 0 && (counter.1.is_none() || counter.1.unwrap() >= 0)
                 }))
             }
-            Instruction::Jump(addr) => pc = *addr,
+            Instruction::Jump(addr) => {
+                if cache.contains(&(*addr, sp)) {
+                    return Ok(false);
+                }
+                cache.insert((*addr, sp));
+                pc = *addr
+            }
             Instruction::Split(addr1, addr2, count, register_idx) => {
                 if *register_idx >= 0 {
                     if let Some(_) = register.get_mut(*register_idx as usize) {
@@ -117,8 +124,8 @@ fn eval_depth(
                         register.push(*count);
                     }
                 }
-                if eval_depth(inst, line, index, *addr1, sp, register.clone())?
-                    || eval_depth(inst, line, index, *addr2, sp, register)?
+                if eval_depth(inst, line, index, *addr1, sp, register.clone(), cache)?
+                    || eval_depth(inst, line, index, *addr2, sp, register, cache)?
                 {
                     return Ok(true);
                 } else {
@@ -234,7 +241,8 @@ pub fn eval(
 ) -> Result<bool, EvalError> {
     if is_depth {
         let register = vec![];
-        eval_depth(inst, line, index, 0, 0, register)
+        let mut cache = HashSet::new();
+        eval_depth(inst, line, index, 0, 0, register, &mut cache)
     } else {
         eval_width(inst, line)
     }
