@@ -132,12 +132,12 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                 '+' => parse_plus_star_question(&mut seq, PSQ::Plus, i)?,
                 '*' => parse_plus_star_question(&mut seq, PSQ::Star, i)?,
                 '?' => parse_plus_star_question(&mut seq, PSQ::Question, i)?,
-                '(' => {
+                '[' => {
                     let prev = take(&mut seq);
                     let prev_or = take(&mut seq_or);
                     stack.push((prev, prev_or))
                 }
-                ')' => {
+                ']' => {
                     if let Some((mut prev, prev_or)) = stack.pop() {
                         if !seq.is_empty() {
                             seq_or.push(AST::Seq(seq));
