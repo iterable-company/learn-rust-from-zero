@@ -18,6 +18,7 @@ pub enum AST {
     Counter(Box<AST>, (usize, Option<usize>)),
     AnyNumber,
     NotNumber,
+    Chapcher(Box<AST>),
 }
 
 #[derive(Debug)]
@@ -26,6 +27,7 @@ pub enum ParseError {
     InvalidRightParen(usize),
     InvalidBrace,
     InvalidCaret,
+    InvalidRightBracket(usize),
     NoPrev(usize),
     NoRightParen,
     Empty,
@@ -54,6 +56,9 @@ impl Display for ParseError {
             }
             ParseError::InvalidCaret => {
                 write!(f, "ParseError: invalid caret")
+            }
+            ParseError::InvalidRightBracket(pos) => {
+                write!(f, "ParseError: invalid bracket: pos = {pos}")
             }
         }
     }
@@ -184,7 +189,23 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                         seq_or = prev_or;
                         expect_grouping = false;
                     } else {
-                        return Err(ParseError::InvalidRightParen(i));
+                        return Err(ParseError::InvalidRightBracket(i));
+                    }
+                }
+                '(' => {
+                    let prev = take(&mut seq);
+                    let prev_or = take(&mut seq_or);
+                    stack.push((prev, prev_or))
+                }
+                ')' => {
+                    if let Some((mut prev, prev_or)) = stack.pop() {
+                        if !seq.is_empty() {
+                            prev.push(AST::Chapcher(Box::new(AST::Seq(seq))))
+                        }
+                        seq = prev;
+                        seq_or = prev_or;
+                    } else {
+                        return Err(ParseError::InvalidRightParen(i))
                     }
                 }
                 '|' => {

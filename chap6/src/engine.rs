@@ -17,6 +17,8 @@ pub enum Instruction {
     Descrement(usize),
     AnyNumber,
     NotNumber,
+    CapcherBegin(i32),
+    CapcherEnd(i32),
 }
 
 impl Display for Instruction {
@@ -38,6 +40,8 @@ impl Display for Instruction {
             Instruction::Descrement(idx) => write!(f, "decrement {}", idx),
             Instruction::AnyNumber => write!(f, "any number"),
             Instruction::NotNumber => write!(f, "not number"),
+            Instruction::CapcherBegin(idx) => write!(f, "capcher begin {}", idx),
+            Instruction::CapcherEnd(idx) => write!(f, "capcher end {}", idx),
         }
     }
 }
@@ -57,7 +61,7 @@ pub fn print(expr: &str) -> Result<(), DynError> {
     Ok(())
 }
 
-pub fn do_matching(expr: &str, line: &str, index: usize, is_depth: bool) -> Result<bool, DynError> {
+pub fn do_matching(expr: &str, line: &str, index: usize, is_depth: bool) -> Result<(bool, Vec<String>), DynError> {
     let ast = parser::parse(expr)?;
     let code = codegen::get_code(&ast)?;
     let line = line.chars().collect::<Vec<char>>();

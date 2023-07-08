@@ -30,6 +30,8 @@ fn eval_depth(
     mut sp: usize,
     mut register: Vec<(i32, Option<i32>)>,
     cache: &mut HashSet<(usize, usize)>,
+    matched_str: &mut Vec<Vec<char>>,
+    mut capcher_expected: bool,
 ) -> Result<bool, EvalError> {
     println!(
         "eval_depth:: inst: {:?}, line: {:?}, index: {}, pc: {}, sp: {}",
@@ -50,6 +52,9 @@ fn eval_depth(
             Instruction::Char(c) => {
                 if let Some(sp_c) = line.get(sp) {
                     if c == sp_c || *c == '.' {
+                        if capcher_expected {
+                            matched_str.last_mut().unwrap().push(*sp_c);
+                        }
                         safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
                         safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
                     } else {
@@ -62,6 +67,9 @@ fn eval_depth(
             Instruction::UnmatchChars(c) => {
                 if let Some(sp_c) = line.get(sp) {
                     if !c.contains(sp_c) {
+                        if capcher_expected {
+                            matched_str.last_mut().unwrap().push(*sp_c);
+                        }
                         safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
                         safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
                     } else {
@@ -72,6 +80,9 @@ fn eval_depth(
             Instruction::AnyNumber => {
                 if let Some(sp_c) = line.get(sp) {
                     if "0123456789".chars().collect::<Vec<_>>().contains(sp_c) {
+                        if capcher_expected {
+                            matched_str.last_mut().unwrap().push(*sp_c);
+                        }
                         safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
                         safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
                     } else {
@@ -84,6 +95,9 @@ fn eval_depth(
             Instruction::NotNumber => {
                 if let Some(sp_c) = line.get(sp) {
                     if !"0123456789".chars().collect::<Vec<_>>().contains(sp_c) {
+                        if capcher_expected {
+                            matched_str.last_mut().unwrap().push(*sp_c);
+                        }
                         safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
                         safe_add(&mut sp, &1, || EvalError::SPOverFlow)?;
                     } else {
@@ -124,8 +138,8 @@ fn eval_depth(
                         register.push(*count);
                     }
                 }
-                if eval_depth(inst, line, index, *addr1, sp, register.clone(), cache)?
-                    || eval_depth(inst, line, index, *addr2, sp, register, cache)?
+                if eval_depth(inst, line, index, *addr1, sp, register.clone(), cache, matched_str, capcher_expected)?
+                    || eval_depth(inst, line, index, *addr2, sp, register, cache, matched_str, capcher_expected)?
                 {
                     return Ok(true);
                 } else {
@@ -140,6 +154,20 @@ fn eval_depth(
                     register[*idx].1 = Some(c - 1);
                 }
                 register[*idx].0 = register[*idx].0 - 1;
+                safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
+            }
+            Instruction::CapcherBegin(register_idx) => {
+                if *register_idx >= 0 {
+                    if let Some(_) = matched_str.get_mut(*register_idx as usize) {
+                    } else {
+                        matched_str.push(vec![]);
+                    }
+                    capcher_expected = true;
+                }
+                safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
+            }
+            Instruction::CapcherEnd(_) => {
+                capcher_expected = false;
                 safe_add(&mut pc, &1, || EvalError::PCOverFlow)?;
             }
         }
@@ -210,6 +238,8 @@ fn eval_width(inst: &[Instruction], line: &[char]) -> Result<bool, EvalError> {
                 continue;
             }
             Instruction::Descrement(_register_idx) => todo!(),
+            Instruction::CapcherBegin(_) => todo!(),
+            Instruction::CapcherEnd(_) => todo!(),
         }
 
         if !ctx.is_empty() {
@@ -238,12 +268,17 @@ pub fn eval(
     line: &[char],
     index: usize,
     is_depth: bool,
-) -> Result<bool, EvalError> {
+) -> Result<(bool, Vec<String>), EvalError> {
     if is_depth {
-        let register = vec![];
-        let mut cache = HashSet::new();
-        eval_depth(inst, line, index, 0, 0, register, &mut cache)
+        let register = Vec::<(i32, Option<i32>)>::new();
+        let mut cache = HashSet::<(usize, usize)>::new();
+        let mut matched_str = Vec::<Vec<char>>::new();
+        println!("inst: {:?}", inst);
+        let is_match = eval_depth(inst, line, index, 0, 0, register, &mut cache, &mut matched_str, false)?;
+        Ok((is_match, matched_str.into_iter().map(|vec_char| vec_char.into_iter().collect()).collect()))
+        //Ok((false, vec![]))
     } else {
-        eval_width(inst, line)
+        eval_width(inst, line);
+        todo!()
     }
 }

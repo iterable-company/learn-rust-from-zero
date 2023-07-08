@@ -11,6 +11,7 @@ pub enum CodeGenError {
     FailStar,
     FailOr,
     FailQuestion,
+    FailCounter,
 }
 
 impl Display for CodeGenError {
@@ -29,8 +30,10 @@ struct Generator {
 
 impl Generator {
     fn gen_code(&mut self, ast: &AST) -> Result<(), CodeGenError> {
+        println!("{:?}", ast);
         let mut register_idx = 0;
-        self.gen_expr(ast, &mut register_idx)?;
+        let mut register_match_str_idx = 0;
+        self.gen_expr(ast, &mut register_idx, &mut register_match_str_idx)?;
         self.inc_pc()?;
         self.insts.push(Instruction::Match);
         Ok(())
@@ -40,27 +43,28 @@ impl Generator {
         safe_add(&mut self.pc, &1, || CodeGenError::PCOverFlow)
     }
 
-    fn gen_expr(&mut self, ast: &AST, register_idx: &mut i32) -> Result<(), CodeGenError> {
+    fn gen_expr(&mut self, ast: &AST, register_idx: &mut i32, register_match_str_idx: &mut i32) -> Result<(), CodeGenError> {
         match ast {
             AST::Char(c) => self.gen_char(*c)?,
             AST::UnmatchChars(c) => self.gen_unmacth_chars(c.to_vec())?,
-            AST::Or(e1, e2) => self.gen_or(e1, e2, register_idx)?,
-            AST::Plus(e) => self.gen_plus(e, register_idx)?,
-            AST::Star(e) => self.gen_star(e, register_idx)?,
-            AST::Question(e) => self.gen_question(e, register_idx)?,
-            AST::Seq(v) => self.gen_seq(v, register_idx)?,
+            AST::Or(e1, e2) => self.gen_or(e1, e2, register_idx, register_match_str_idx)?,
+            AST::Plus(e) => self.gen_plus(e, register_idx, register_match_str_idx)?,
+            AST::Star(e) => self.gen_star(e, register_idx, register_match_str_idx)?,
+            AST::Question(e) => self.gen_question(e, register_idx, register_match_str_idx)?,
+            AST::Seq(v) => self.gen_seq(v, register_idx, register_match_str_idx)?,
             AST::Caret => self.gen_caret()?,
             AST::Doller => self.gen_doller()?,
             AST::AnyNumber => self.get_number()?,
             AST::NotNumber => self.get_not_number()?,
-            AST::Counter(e, count) => self.gen_counter(e, *count, register_idx)?,
+            AST::Counter(e, count) => self.gen_counter(e, *count, register_idx, register_match_str_idx)?,
+            AST::Chapcher(e) => self.gen_capcher(e, register_idx, register_match_str_idx)?,
         }
         Ok(())
     }
 
-    fn gen_seq(&mut self, exprs: &[AST], register_idx: &mut i32) -> Result<(), CodeGenError> {
+    fn gen_seq(&mut self, exprs: &[AST], register_idx: &mut i32, register_match_str_idx: &mut i32) -> Result<(), CodeGenError> {
         for e in exprs {
-            self.gen_expr(e, register_idx)?;
+            self.gen_expr(e, register_idx, register_match_str_idx)?;
         }
         Ok(())
     }
@@ -107,13 +111,13 @@ impl Generator {
         Ok(())
     }
 
-    fn gen_or(&mut self, e1: &AST, e2: &AST, register_idx: &mut i32) -> Result<(), CodeGenError> {
+    fn gen_or(&mut self, e1: &AST, e2: &AST, register_idx: &mut i32, register_match_str_idx: &mut i32) -> Result<(), CodeGenError> {
         let split_addr = self.pc;
         self.inc_pc()?;
         let split = Instruction::Split(self.pc, 0, (-1, None), -1);
         self.insts.push(split);
 
-        self.gen_expr(e1, register_idx)?;
+        self.gen_expr(e1, register_idx, register_match_str_idx)?;
 
         let jmp_addr = self.pc;
         self.insts.push(Instruction::Jump(0));
@@ -125,7 +129,7 @@ impl Generator {
             return Err(CodeGenError::FailOr);
         }
 
-        self.gen_expr(e2, register_idx)?;
+        self.gen_expr(e2, register_idx, register_match_str_idx)?;
 
         if let Some(Instruction::Jump(l3)) = self.insts.get_mut(jmp_addr) {
             *l3 = self.pc;
@@ -136,7 +140,7 @@ impl Generator {
         Ok(())
     }
 
-    fn gen_question(&mut self, e: &AST, register_idx: &mut i32) -> Result<(), CodeGenError> {
+    fn gen_question(&mut self, e: &AST, register_idx: &mut i32, register_match_str_idx: &mut i32) -> Result<(), CodeGenError> {
         // split L1, L2
         let split_addr = self.pc;
         self.inc_pc()?;
@@ -144,7 +148,7 @@ impl Generator {
         self.insts.push(split);
 
         // L1: eのコード
-        self.gen_expr(e, register_idx)?;
+        self.gen_expr(e, register_idx, register_match_str_idx)?;
 
         // L2の値を設定
         if let Some(Instruction::Split(_, l2, (-1, None), -1)) = self.insts.get_mut(split_addr) {
@@ -155,10 +159,10 @@ impl Generator {
         }
     }
 
-    fn gen_plus(&mut self, e: &AST, register_idx: &mut i32) -> Result<(), CodeGenError> {
+    fn gen_plus(&mut self, e: &AST, register_idx: &mut i32, register_match_str_idx: &mut i32) -> Result<(), CodeGenError> {
         // L1: eのコード
         let l1 = self.pc;
-        self.gen_expr(e, register_idx)?;
+        self.gen_expr(e, register_idx, register_match_str_idx)?;
 
         // split L1, L2
         self.inc_pc()?;
@@ -168,7 +172,7 @@ impl Generator {
         Ok(())
     }
 
-    fn gen_star(&mut self, e: &AST, register_idx: &mut i32) -> Result<(), CodeGenError> {
+    fn gen_star(&mut self, e: &AST, register_idx: &mut i32, register_match_str_idx: &mut i32) -> Result<(), CodeGenError> {
         // L1: split L2, L3
         let l1 = self.pc;
         self.inc_pc()?;
@@ -176,7 +180,7 @@ impl Generator {
         self.insts.push(split);
 
         // L2: eのコード
-        self.gen_expr(e, register_idx)?;
+        self.gen_expr(e, register_idx, register_match_str_idx)?;
 
         // jump L1
         self.inc_pc()?;
@@ -196,8 +200,10 @@ impl Generator {
         e: &AST,
         count: (usize, Option<usize>),
         register_idx: &mut i32,
+        register_match_str_idx: &mut i32,
     ) -> Result<(), CodeGenError> {
         // L1: split L2, L3
+        println!("e: {:?}, count: {:?}, register_idx: {}", e, count, register_idx);
         let l1 = self.pc;
         self.inc_pc()?;
         let split = Instruction::Split(
@@ -213,19 +219,45 @@ impl Generator {
         self.inc_pc()?;
 
         // L2: eのコード
-        self.gen_expr(e, register_idx)?;
+        self.gen_expr(e, register_idx, register_match_str_idx)?;
 
         // jump L1
         self.inc_pc()?;
         self.insts.push(Instruction::Jump(l1));
 
         // L3の値を設定
+        println!("l1: {:?}, self.insts: {:?}", l1, self.insts);
         if let Some(Instruction::Split(_, l3, _, _)) = self.insts.get_mut(l1) {
             *l3 = self.pc;
             Ok(())
         } else {
-            Err(CodeGenError::FailStar)
+            Err(CodeGenError::FailCounter)
         }
+    }
+
+    fn gen_capcher(
+        &mut self,
+        e: &AST,
+        register_idx: &mut i32,
+        register_match_str_idx: &mut i32,
+    ) -> Result<(), CodeGenError> {
+        println!("gen_capcher_1: pc: {}, idx: {}", self.pc, register_match_str_idx);
+        let idx = *register_match_str_idx;
+        let inst = Instruction::CapcherBegin(idx);
+        *register_match_str_idx += 1;
+        self.insts.push(inst);
+        self.inc_pc()?;
+
+        self.gen_expr(e, register_idx, register_match_str_idx)?;
+
+        println!("gen_capcher_2: pc: {}, idx: {}", self.pc, register_match_str_idx);
+        self.inc_pc()?;
+        let inst = Instruction::CapcherEnd(idx);
+        //self.inc_pc()?;
+        println!("gen_capcher_3: pc: {}, idx: {}", self.pc, register_match_str_idx);
+        self.insts.push(inst);
+
+        Ok(())
     }
 }
 

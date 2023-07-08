@@ -1,0 +1,18 @@
+Seq(
+    [
+        Char('a'),
+        Char('b'),
+        Chapcher(
+                Seq(
+                    [
+                        Counter(
+                            UnmatchChars(
+                                ['c', 'd']
+                            ),
+                            (2, Some(2))
+                        )
+                    ]
+                )
+        )
+    ]
+)
