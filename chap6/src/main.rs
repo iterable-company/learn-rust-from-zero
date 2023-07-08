@@ -78,7 +78,7 @@ mod tests {
         assert_eq!(exec("ab[^cd|ef]", "abg", true).unwrap(), (true, vec![]));
         assert_eq!(exec("ab[^cd|ef]", "abef", true).unwrap(), (true, vec![]));
         assert_eq!(exec("ab([^cd]{2})", "abef", true).unwrap(), (true, vec!["ef".to_string()]));
-        //assert_eq!(exec("ab((\\d{2})-(\\d{2}))", "ab12-34", true).unwrap(), (true, vec!["12-34".to_string(), "12".to_string(), "34".to_string()]));
+        assert_eq!(exec("ab((\\d{2})-(\\d{2}))", "ab12-34", true).unwrap(), (true, vec!["12-34".to_string(), "12".to_string(), "34".to_string()]));
 
         assert_eq!(exec("abc|def", "efa", true).unwrap(), (false, vec![]));
         assert_eq!(exec("[ab|cd]+", "", true).unwrap(), (false, vec![]));

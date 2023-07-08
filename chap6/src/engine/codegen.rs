@@ -30,7 +30,6 @@ struct Generator {
 
 impl Generator {
     fn gen_code(&mut self, ast: &AST) -> Result<(), CodeGenError> {
-        println!("{:?}", ast);
         let mut register_idx = 0;
         let mut register_match_str_idx = 0;
         self.gen_expr(ast, &mut register_idx, &mut register_match_str_idx)?;
@@ -226,7 +225,6 @@ impl Generator {
         self.insts.push(Instruction::Jump(l1));
 
         // L3の値を設定
-        println!("l1: {:?}, self.insts: {:?}", l1, self.insts);
         if let Some(Instruction::Split(_, l3, _, _)) = self.insts.get_mut(l1) {
             *l3 = self.pc;
             Ok(())
@@ -241,7 +239,6 @@ impl Generator {
         register_idx: &mut i32,
         register_match_str_idx: &mut i32,
     ) -> Result<(), CodeGenError> {
-        println!("gen_capcher_1: pc: {}, idx: {}", self.pc, register_match_str_idx);
         let idx = *register_match_str_idx;
         let inst = Instruction::CapcherBegin(idx);
         *register_match_str_idx += 1;
@@ -249,12 +246,8 @@ impl Generator {
         self.inc_pc()?;
 
         self.gen_expr(e, register_idx, register_match_str_idx)?;
-
-        println!("gen_capcher_2: pc: {}, idx: {}", self.pc, register_match_str_idx);
         self.inc_pc()?;
         let inst = Instruction::CapcherEnd(idx);
-        //self.inc_pc()?;
-        println!("gen_capcher_3: pc: {}, idx: {}", self.pc, register_match_str_idx);
         self.insts.push(inst);
 
         Ok(())
