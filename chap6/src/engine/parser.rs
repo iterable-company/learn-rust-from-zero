@@ -4,7 +4,7 @@ use std::{
     mem::take,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AST {
     Char(char),
     UnmatchChars(Vec<char>),
@@ -279,5 +279,88 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
         Ok(ast)
     } else {
         Err(ParseError::Empty)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::engine::parser::{parse, AST};
+
+
+    #[test]
+    fn test_parse() {
+        assert_eq!(parse("abc|def").unwrap(), 
+            AST::Or(
+                Box::new(AST::Seq(vec![AST::Char('a'), AST::Char('b'), AST::Char('c')])),
+                Box::new(AST::Seq(vec![AST::Char('d'), AST::Char('e'), AST::Char('f')]))
+            ));
+
+        assert_eq!(parse("a[bc]*").unwrap(), 
+            AST::Seq(vec![
+                AST::Char('a'), AST::Star(Box::new(AST::Seq(vec![AST::Char('b'), AST::Char('c')])))
+            ]));
+
+        assert_eq!(parse("[ab|cd]+").unwrap(), 
+            AST::Seq(vec![AST::Plus(
+                    Box::new(AST::Or(
+                        Box::new(
+                            AST::Seq(vec![AST::Char('a'), AST::Char('b')])
+                        ),
+                        Box::new(
+                            AST::Seq(vec![AST::Char('c'), AST::Char('d')])
+                        )
+                    )))]
+            )
+        );
+            
+        assert_eq!(parse("abc?").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Char('b'), AST::Question(Box::new(AST::Char('c')))]
+            )
+        );
+            
+        assert_eq!(parse("abc.e").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Char('b'), AST::Char('c'), AST::Char('.'), AST::Char('e')]
+            )
+        );
+            
+        assert_eq!(parse("^abcd").unwrap(), 
+            AST::Seq(vec![AST::Caret, AST::Char('a'), AST::Char('b'), AST::Char('c'), AST::Char('d')]
+            )
+        );
+            
+        assert_eq!(parse("abcd$").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Char('b'), AST::Char('c'), AST::Char('d'), AST::Doller]
+            )
+        );
+            
+        assert_eq!(parse("a\\d+b").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Plus(Box::new(AST::AnyNumber)), AST::Char('b')]
+            )
+        );
+            
+        assert_eq!(parse("a\\D+b").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Plus(Box::new(AST::NotNumber)), AST::Char('b')]
+            )
+        );
+            
+        assert_eq!(parse("ad{2}b").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Counter(Box::new(AST::Char('d')), (2, Some(2))), AST::Char('b')]
+            )
+        );
+            
+        assert_eq!(parse("abc{1,3}d").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Char('b'), AST::Counter(Box::new(AST::Char('c')), (1, Some(3))), AST::Char('d')]
+            )
+        );
+            
+        assert_eq!(parse("abc{1,}d").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Char('b'), AST::Counter(Box::new(AST::Char('c')), (1, None)), AST::Char('d')]
+            )
+        );
+            
+        assert_eq!(parse("ab([^cd]{2})").unwrap(), 
+            AST::Seq(vec![AST::Char('a'), AST::Char('b'), AST::Chapcher(Box::new(AST::Seq(vec![AST::Counter(Box::new(AST::UnmatchChars(vec!['c','d'])), (2, Some(2)))])))]
+            )
+        );
     }
 }
