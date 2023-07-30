@@ -200,7 +200,10 @@ pub fn parse(expr: &str) -> Result<AST, ParseError> {
                 ')' => {
                     if let Some((mut prev, prev_or)) = stack.pop() {
                         if !seq.is_empty() {
-                            prev.push(AST::Chapcher(Box::new(AST::Seq(seq))))
+                            seq_or.push(AST::Seq(seq));
+                        }
+                        if let Some(ast) = fold_or(seq_or) {
+                            prev.push(AST::Chapcher(Box::new(ast)))
                         }
                         seq = prev;
                         seq_or = prev_or;
@@ -360,6 +363,22 @@ mod tests {
             
         assert_eq!(parse("ab([^cd]{2})").unwrap(), 
             AST::Seq(vec![AST::Char('a'), AST::Char('b'), AST::Chapcher(Box::new(AST::Seq(vec![AST::Counter(Box::new(AST::UnmatchChars(vec!['c','d'])), (2, Some(2)))])))]
+            )
+        );
+            
+        assert_eq!(parse("ab([cd]{2}|ef)").unwrap(), 
+            AST::Seq(
+                vec![
+                    AST::Char('a'),
+                    AST::Char('b'),
+                    AST::Chapcher(
+                        Box::new(AST::Or(
+                            Box::new(
+                                AST::Seq(vec![AST::Counter(Box::new(AST::Seq(vec![AST::Char('c'), AST::Char('d')])), (2, Some(2))),])),
+                            Box::new(AST::Seq(vec![AST::Char('e'), AST::Char('f')]))
+                        ))
+                    )
+                ]
             )
         );
     }
