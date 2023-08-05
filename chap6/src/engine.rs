@@ -5,7 +5,7 @@ mod parser;
 use crate::helper::DynError;
 use std::fmt::{self, Display};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Instruction {
     Char(char),
     UnmatchChars(Vec<char>),

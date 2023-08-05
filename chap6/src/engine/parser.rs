@@ -381,5 +381,31 @@ mod tests {
                 ]
             )
         );
+            
+        assert_eq!(parse("ab((\\d{2})-(\\d{2}))").unwrap(), 
+            AST::Seq(
+                vec![
+                    AST::Char('a'),
+                    AST::Char('b'),
+                    AST::Chapcher(
+                        Box::new(AST::Seq(vec![
+                            AST::Chapcher(Box::new(AST::Seq(vec![
+                                AST::Counter(
+                                    Box::new(AST::AnyNumber),
+                                    (2, Some(2))
+                                )
+                            ]))),
+                            AST::Char('-'),
+                            AST::Chapcher(Box::new(AST::Seq(vec![
+                                AST::Counter(
+                                    Box::new(AST::AnyNumber),
+                                    (2, Some(2))
+                                )
+                            ]))),
+                        ]))
+                    )
+                ]
+            )
+        );
     }
 }

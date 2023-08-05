@@ -264,6 +264,7 @@ pub fn get_code(ast: &AST) -> Result<Vec<Instruction>, CodeGenError> {
 mod tests {
     use super::{get_code, AST};
 
+    use crate::engine::Instruction::*;
     #[test]
     fn test_star() {
         let instructions = get_code(&AST::Seq(vec![
@@ -274,8 +275,20 @@ mod tests {
             ))),
             AST::Char('f'),
         ]))
-        .unwrap(); //"a(bc|cd)*e"
-        println!("{:#?}", instructions);
+        .unwrap(); //"a(bc|de)*f"
+        assert_eq!(instructions, vec![
+            Char('a'),
+            Split(2, 9, (-1, None), -1),
+            Split(3, 6, (-1, None), -1),
+            Char('b'),
+            Char('c'),
+            Jump(8),
+            Char('d'),
+            Char('e'),
+            Jump(1),
+            Char('f'),
+            Match,
+        ]);
     }
 
     #[test]
@@ -288,8 +301,19 @@ mod tests {
             ))),
             AST::Char('f'),
         ]))
-        .unwrap(); //"a(bc|cd)?e"
-        println!("{:#?}", instructions);
+        .unwrap(); //"a(bc|de)?f"
+        assert_eq!(instructions, vec![
+            Char('a'),
+            Split(2, 8, (-1, None), -1),
+            Split(3, 6, (-1, None), -1),
+            Char('b'),
+            Char('c'),
+            Jump(8),
+            Char('d'),
+            Char('e'),
+            Char('f'),
+            Match,
+        ]);
     }
 
     #[test]
@@ -302,8 +326,39 @@ mod tests {
             ))),
             AST::Char('f'),
         ]))
-        .unwrap(); //"a(bc|cd)+e"
-        println!("{:#?}", instructions);
+        .unwrap(); //"a(bc|de)+f"
+        assert_eq!(instructions, vec![
+            Char('a'),
+            Split(2, 5, (-1, None), -1),
+            Char('b'),
+            Char('c'),
+            Jump(7),
+            Char('d'),
+            Char('e'),
+            Split(1, 8, (-1, None), -1),
+            Char('f'),
+            Match,
+        ]);
+    }
+
+    #[test]
+    fn test_unmatch() {
+        let instructions = get_code(&AST::Seq(vec![
+            AST::Char('a'),
+            AST::Char('b'),
+            AST::Counter(
+                Box::new(AST::UnmatchChars(vec!['c','d'])), (2, Some(2))
+            )
+        ])).unwrap(); //"ab[^cd]{2}"
+        assert_eq!(instructions, vec![
+            Char('a'),
+            Char('b'),
+            Split(3, 6, (2, Some(2)), 0),
+            Descrement(0),
+            UnmatchChars(vec!['c','d']),
+            Jump(2),
+            Match
+        ]);
     }
 
     #[test]
@@ -314,6 +369,62 @@ mod tests {
             AST::Char('f'),
         ]))
         .unwrap(); //"ad{3}f"
-        println!("{:#?}", instructions);
+        assert_eq!(instructions, vec![
+            Char('a'),
+            Split(2, 5, (1, Some(3)), 0),
+            Descrement(0),
+            Char('d'),
+            Jump(1),
+            Char('f'),
+            Match,
+        ]);
+    }
+
+    #[test]
+    fn test_capcher() {
+        let instructions = get_code(&AST::Seq(
+            vec![
+                AST::Char('a'),
+                AST::Char('b'),
+                AST::Chapcher(
+                    Box::new(AST::Seq(vec![
+                        AST::Chapcher(Box::new(AST::Seq(vec![
+                            AST::Counter(
+                                Box::new(AST::AnyNumber),
+                                (2, Some(2))
+                            )
+                        ]))),
+                        AST::Char('-'),
+                        AST::Chapcher(Box::new(AST::Seq(vec![
+                            AST::Counter(
+                                Box::new(AST::AnyNumber),
+                                (2, Some(2))
+                            )
+                        ]))),
+                    ]))
+                )
+            ]
+        ))
+        .unwrap(); //"ab((\\d{2})-(\\d{2}))"
+        assert_eq!(instructions, vec![
+            Char('a'),
+            Char('b'),
+            CapcherBegin(0),
+            CapcherBegin(1),
+            Split(5, 8, (2, Some(2)), 0),
+            Descrement(0),
+            AnyNumber,
+            Jump(4),
+            CapcherEnd(1),
+            Char('-'),
+            CapcherBegin(2),
+            Split(12, 15, (2, Some(2)), 1),
+            Descrement(1),
+            AnyNumber,
+            Jump(11),
+            CapcherEnd(2),
+            CapcherEnd(0),
+            Match,
+        ]);
     }
 }
