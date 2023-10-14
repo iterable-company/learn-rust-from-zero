@@ -406,10 +406,6 @@ impl Worker {
             return false;
         };
 
-        if cmd.len() > 2 {
-            eprintln!("ZeroSh: 三つ以上のコマンドによるパイプはサポートしていません");
-            return false;
-        }
         let redirect = if let Some(redirect_filename) = redirect_filename_opt {
             let control_removed = redirect_filename
                 .chars()
@@ -434,53 +430,56 @@ impl Worker {
             None
         };
 
-        let mut input = None; // 二つめのプロセスの標準入力
-        let output = if cmd.len() == 2 {
-            // パイプを作成
+        let mut input = vec![];
+        let mut output = vec![];
+        for _ in 0..(cmd.len() - 1) {
             let p = pipe().unwrap();
-            input = Some(p.0);
-            Some(p.1)
-        } else {
-            redirect
-        };
-
-        // パイプを閉じる関数を定義
-        let cleanup_pipe = CleanUp {
-            f: || {
-                if let Some(fd) = input {
-                    syscall(|| unistd::close(fd)).unwrap();
-                }
-                if let Some(fd) = output {
-                    syscall(|| unistd::close(fd)).unwrap();
-                }
-            },
-        };
-
-        let pgid;
-        // 一つめのプロセスを生成
-        match fork_exec(Pid::from_raw(0), cmd[0].0, &cmd[0].1, None, output) {
-            Ok(child) => {
-                pgid = child;
-            }
-            Err(e) => {
-                eprintln!("ZeroSh: プロセス生成エラー: {e}");
-                return false;
-            }
+            input.push(p.0);
+            output.push(p.1);
+        }
+        if let Some(r) = redirect {
+            output.push(r);
         }
 
+        // パイプを閉じる関数を定義
+        let mut cleanup_pipes = vec![];
+        for idx in 0..cmd.len() {
+            let i = input.get(idx);
+            let o = output.get(idx);
+            cleanup_pipes.push(CleanUp {
+                f: move || {
+                    if let Some(fd) = i {
+                        syscall(|| unistd::close(*fd)).unwrap();
+                    }
+                    if let Some(fd) = o {
+                        syscall(|| unistd::close(*fd)).unwrap();
+                    }
+                },
+            })
+        }
+
+        let mut pids = HashMap::new();
+        let mut pgid = Pid::from_raw(0);
         // プロセス、ジョブの情報を追加
-        let info = ProcInfo {
+        let mut info = ProcInfo {
             state: ProcState::Run,
             pgid,
         };
-        let mut pids = HashMap::new();
-        pids.insert(pgid, info.clone()); // 一つめのプロセスの情報
-
-        // 二つめのプロセスを生成
-        if cmd.len() == 2 {
-            match fork_exec(pgid, cmd[1].0, &cmd[1].1, input, redirect) {
+        for idx in 0..cmd.len() {
+            // 一つめのプロセスを生成
+            let input = if idx == 0 {
+                None
+            } else {
+                input.get(idx - 1).cloned()
+            };
+            let output = output.get(idx).cloned();
+            match fork_exec(pgid, cmd[idx].0, &cmd[idx].1, input, output) {
                 Ok(child) => {
-                    pids.insert(child, info);
+                    if idx == 0 {
+                        pgid = child;
+                        info.pgid = child;
+                    }
+                    pids.insert(child, info.clone());
                 }
                 Err(e) => {
                     eprintln!("ZeroSh: プロセス生成エラー: {e}");
@@ -488,9 +487,13 @@ impl Worker {
                 }
             }
         }
-        std::mem::drop(cleanup_pipe); // パイプをクローズ
 
-        if cmd.len() == 2 {
+        // 後始末
+        for cleanup_pipe in cleanup_pipes {
+            std::mem::drop(cleanup_pipe); // パイプをクローズ
+        }
+
+        if cmd.len() > 1 {
             if let Some(redirect_fd) = redirect {
                 match close(redirect_fd) {
                     Err(e) => {
