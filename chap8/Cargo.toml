@@ -1,0 +1,10 @@
+[package]
+name = "zerodb"
+version = "0.1.0"
+edition = "2021"
+authors = ["Yuuki Takano <ytakanoster@gmail.com>"]
+license = "MIT"
+
+[dependencies]
+rustyline = "10.0.0"
+nix = "0.25"
