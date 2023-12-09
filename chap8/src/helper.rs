@@ -11,3 +11,4 @@ exit            : 終了
 help            : このヘルプを表示 (h)"#
     )
 }
+pub type DynError = Box<dyn std::error::Error + Send + Sync + 'static>;
